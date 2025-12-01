@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Help Desk Ticketing Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- Bootstrap 5 -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<!-- Font Awesome -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+    body { background: #f1f3f5; }
+    .sidebar-card { background: #fff; border-radius: 8px; padding: 15px; margin-bottom: 15px; }
+    .ticket-row:hover { background: #f8f9fa; cursor: pointer; }
+    .status-badge { padding: 5px 10px; border-radius: 20px; font-size: 12px; }
+    .status-draft { background: #d7ebff; color: #0a58ca; }
+    .status-final { background: #d7f8e6; color: #0a9b33; }
+    .priority-stars i { color: gold; }
+    .dashboard-title { font-size: 20px; font-weight: bold; }
+    .kpi-box { background: #fff; border-radius: 8px; padding: 12px; text-align: center; }
+    .kpi-number { font-size: 22px; font-weight: bold; }
+    .profile-img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
+    .modal-lg { max-width: 900px; }
+</style>
+</head>
+<body>
+
+<nav class="navbar navbar-dark bg-dark px-4">
+    <span class="navbar-brand">HELP DESK TICKETING</span>
+    <div class="d-flex align-items-center gap-3">
+        <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#createTicketModal">
+            <i class="fa fa-plus me-1"></i> Create Ticket
+        </button>
+        <i class="fa-solid fa-user-circle text-white fs-4"></i>
+    </div>
+</nav>
+
+<div class="container-fluid mt-3">
+<div class="row">
+
+    <!-- LEFT SIDEBAR -->
+    <div class="col-md-3">
+
+        <!-- Helpdesk Overview -->
+        <div class="sidebar-card">
+            <div class="dashboard-title mb-2">Help Desk Overview</div>
+            <table class="table table-sm mb-0">
+                <tr><td>Tickets</td><td><b>157</b></td></tr>
+                <tr><td>High Priority</td><td><b>9</b></td></tr>
+                <tr><td>Urgent</td><td><b>0</b></td></tr>
+            </table>
+        </div>
+
+        <!-- My Tickets -->
+        <div class="sidebar-card">
+            <div class="dashboard-title mb-2">My Tickets</div>
+            <ul class="list-group">
+                <li class="list-group-item d-flex justify-content-between">New <span>66</span></li>
+                <li class="list-group-item d-flex justify-content-between">Waiting on Customer <span>12</span></li>
+                <li class="list-group-item d-flex justify-content-between">On Hold <span>3</span></li>
+                <li class="list-group-item d-flex justify-content-between">Solved <span>21</span></li>
+                <li class="list-group-item d-flex justify-content-between">Closed <span>276</span></li>
+            </ul>
+        </div>
+
+        <!-- Ticket Groups Chart -->
+        <div class="sidebar-card">
+            <div class="dashboard-title mb-2">Tickets by Group</div>
+            <canvas id="groupChart" height="180"></canvas>
+        </div>
+
+        <!-- Feedback Chart -->
+        <div class="sidebar-card">
+            <div class="dashboard-title mb-2">My Feedback</div>
+            <canvas id="feedbackChart" height="180"></canvas>
+        </div>
+
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="col-md-9">
+
+        <!-- KPI Row -->
+        <div class="row mb-3">
+            <div class="col-md-3">
+                <div class="kpi-box">
+                    <div>Closed Tickets</div>
+                    <div class="kpi-number">197</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="kpi-box">
+                    <div>Customer Rating</div>
+                    <div class="kpi-number">9/10</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="kpi-box">
+                    <div>Success Rate</div>
+                    <div class="kpi-number">100%</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="kpi-box">
+                    <div>Daily Target</div>
+                    <div class="kpi-number">99%</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tickets Table -->
+        <div class="card shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <strong>My Tickets - New (66)</strong>
+                <div>
+                    <input id="searchInput" class="form-control form-control-sm d-inline-block" placeholder="Search..." style="width:200px">
+                    <button class="btn btn-sm btn-outline-secondary ms-2" id="refreshBtn">Refresh</button>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="ticketsTable">
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th>Customer</th>
+                        <th>Subject</th>
+                        <th>Assigned</th>
+                        <th>ID</th>
+                        <th>Created</th>
+                        <th>Status</th>
+                        <th>Priority</th>
+                    </tr>
+                </thead>
+                <tbody id="ticketsTbody">
+
+                    <tr class="ticket-row">
+                        <td><input type="checkbox"></td>
+                        <td><img src="https://i.pravatar.cc/32?img=1" class="profile-img me-2"> Simon Barrett</td>
+                        <td>Can I host helpdesk on my own servers?</td>
+                        <td>Kris Reykard</td>
+                        <td>85678</td>
+                        <td>07/07/2021</td>
+                        <td><span class="status-badge status-draft">Draft</span></td>
+                        <td class="priority-stars"><i class="fa fa-star"></i><i class="fa fa-star"></i><i class="fa fa-star"></i></td>
+                    </tr>
+
+                    <tr class="ticket-row">
+                        <td><input type="checkbox"></td>
+                        <td><img src="https://i.pravatar.cc/32?img=2" class="profile-img me-2"> Kira Crouch</td>
+                        <td>Are you ITIL certified?</td>
+                        <td>Kris Reykard</td>
+                        <td>85679</td>
+                        <td>28/06/2021</td>
+                        <td><span class="status-badge status-draft">Draft</span></td>
+                        <td class="priority-stars"><i class="fa fa-star"></i><i class="fa fa-star"></i></td>
+                    </tr>
+
+                    <tr class="ticket-row">
+                        <td><input type="checkbox"></td>
+                        <td><img src="https://i.pravatar.cc/32?img=3" class="profile-img me-2"> Siena Allen</td>
+                        <td>Helpdesk Annual Billing</td>
+                        <td>Kris Reykard</td>
+                        <td>85680</td>
+                        <td>15/06/2021</td>
+                        <td><span class="status-badge status-final">Final</span></td>
+                        <td class="priority-stars"><i class="fa fa-star"></i><i class="fa fa-star"></i><i class="fa fa-star"></i><i class="fa fa-star"></i></td>
+                    </tr>
+
+                </tbody>
+            </table>
+            </div>
+        </div>
+
+    </div>
+</div>
+</div>
+
+<!-- CREATE TICKET MODAL -->
+<div class="modal fade" id="createTicketModal" tabindex="-1" aria-labelledby="createTicketModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <form id="createTicketForm">
+        <div class="modal-header">
+          <h5 class="modal-title" id="createTicketModalLabel">Create New Ticket</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+
+        <div class="modal-body">
+          <div id="createAlert" class="alert d-none" role="alert"></div>
+
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">User Email</label>
+              <input type="email" id="ticketEmail" class="form-control" placeholder="user@example.com" required>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Category</label>
+              <select id="ticketCategory" class="form-select">
+                <option>Network</option>
+                <option>Software</option>
+                <option>Hardware</option>
+                <option>Email</option>
+                <option selected>General</option>
+              </select>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Priority</label>
+              <select id="ticketPriority" class="form-select">
+                <option>Low</option>
+                <option selected>Medium</option>
+                <option>High</option>
+                <option>Critical</option>
+              </select>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Assigned To (optional)</label>
+              <input id="ticketAssigned" class="form-control" placeholder="Technician name">
+            </div>
+
+            <div class="col-12">
+              <label class="form-label">Subject</label>
+              <input id="ticketSubject" class="form-control" placeholder="Short summary" required>
+            </div>
+
+            <div class="col-12">
+              <label class="form-label">Description</label>
+              <textarea id="ticketDescription" rows="4" class="form-control" placeholder="Describe the issue..." required></textarea>
+            </div>
+
+            <div class="col-12">
+              <label class="form-label">Attachments (optional)</label>
+              <input id="ticketFiles" type="file" multiple class="form-control">
+              <div class="form-text">Files will be sent with the ticket to the n8n webhook.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button id="submitTicketBtn" type="submit" class="btn btn-primary">Submit Ticket</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Bootstrap JS (bundle includes Popper) -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+/*
+  Webhook integration:
+  - Sends a multipart/form-data POST to the n8n webhook URL below.
+  - If files are present, they are appended to the FormData as 'attachments' fields.
+  - The webhook URL you provided:
+*/
+const N8N_WEBHOOK_URL = "https://resumen8n.app.n8n.cloud/webhook/create-ticket";
+
+/* Create Ticket Handler */
+document.getElementById('createTicketForm').addEventListener('submit', async function(e){
+    e.preventDefault();
+    const submitBtn = document.getElementById('submitTicketBtn');
+    const alertBox = document.getElementById('createAlert');
+    alertBox.classList.add('d-none');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = 'Submitting...';
+
+    // collect fields
+    const email = document.getElementById('ticketEmail').value.trim();
+    const category = document.getElementById('ticketCategory').value;
+    const priority = document.getElementById('ticketPriority').value;
+    const assignedTo = document.getElementById('ticketAssigned').value.trim();
+    const subject = document.getElementById('ticketSubject').value.trim();
+    const description = document.getElementById('ticketDescription').value.trim();
+    const filesInput = document.getElementById('ticketFiles');
+
+    if (!email || !subject || !description) {
+        showAlert('Please fill required fields (email, subject, description).', 'danger');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = 'Submit Ticket';
+        return;
+    }
+
+    try {
+        // Use FormData so attachments can be included
+        const fd = new FormData();
+        fd.append('email', email);
+        fd.append('category', category);
+        fd.append('priority', priority);
+        fd.append('assignedTo', assignedTo);
+        fd.append('subject', subject);
+        fd.append('description', description);
+        fd.append('timestamp', new Date().toISOString());
+
+        // append files (if any)
+        if (filesInput.files && filesInput.files.length) {
+            for (let i=0; i<filesInput.files.length; i++) {
+                // name them 'attachments' so n8n can read them; you can change field name if your workflow expects another
+                fd.append('attachments', filesInput.files[i], filesInput.files[i].name);
+            }
+        }
+
+        // Send to webhook
+        const resp = await fetch(N8N_WEBHOOK_URL, {
+            method: 'POST',
+            body: fd // browser will set multipart/form-data boundary for us
+        });
+
+        if (!resp.ok) {
+            const text = await resp.text().catch(()=>null);
+            throw new Error('Webhook returned HTTP ' + resp.status + (text ? (': ' + text) : ''));
+        }
+
+        // Show success and clear
+        showAlert('Ticket submitted successfully!', 'success');
+        // optionally close modal after a delay
+        setTimeout(() => {
+            const modalEl = document.getElementById('createTicketModal');
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            modal.hide();
+            resetForm();
+        }, 900);
+
+    } catch (err) {
+        console.error('Submit failed', err);
+        showAlert('Failed to submit ticket: ' + (err.message || 'unknown error'), 'danger');
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = 'Submit Ticket';
+    }
+});
+
+function showAlert(message, type='info') {
+    const alertBox = document.getElementById('createAlert');
+    alertBox.className = ''; // reset
+    alertBox.classList.add('alert', 'alert-' + type);
+    alertBox.textContent = message;
+    alertBox.classList.remove('d-none');
+}
+
+function resetForm() {
+    document.getElementById('createTicketForm').reset();
+    document.getElementById('ticketFiles').value = null;
+    document.getElementById('createAlert').classList.add('d-none');
+}
+
+/* Small client-side search and refresh (demo only) */
+document.getElementById('searchInput').addEventListener('input', function(){
+    const q = this.value.trim().toLowerCase();
+    const rows = document.querySelectorAll('#ticketsTbody tr');
+    rows.forEach(r => {
+        const text = r.innerText.toLowerCase();
+        r.style.display = text.indexOf(q) >= 0 ? '' : 'none';
+    });
+});
+document.getElementById('refreshBtn').addEventListener('click', function(){
+    // in a real app you'd re-fetch from server; here we just flash
+    this.classList.add('disabled');
+    setTimeout(()=> this.classList.remove('disabled'), 900);
+});
+
+/* Charts */
+new Chart(document.getElementById("groupChart"), {
+    type: "bar",
+    data: {
+        labels: ["Network", "General", "System", "Unassigned"],
+        datasets: [{
+            data: [40, 80, 50, 20],
+            backgroundColor: ["#56CCF2", "#F2C94C", "#BB6BD9", "#95A5A6"]
+        }]
+    },
+    options: { responsive: true, plugins: { legend: { display: false } } }
+});
+
+new Chart(document.getElementById("feedbackChart"), {
+    type: "doughnut",
+    data: {
+        labels: ["Positive", "Negative"],
+        datasets: [{
+            data: [70, 30],
+            backgroundColor: ["#9b59b6", "#e74c3c"]
+        }]
+    },
+    options: { responsive: true }
+});
+</script>
+
+</body>
+</html>
